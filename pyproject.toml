@@ -13,6 +13,7 @@ license = {text = "Apache-2.0"}
 dependencies = [
     "langextract>=1.0.0",
     # Add your provider's SDK dependencies here
+    "boto3>=1.40.9"
 ]
 
 [project.entry-points."langextract.providers"]
