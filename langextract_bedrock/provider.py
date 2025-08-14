@@ -9,11 +9,11 @@ import langextract as lx
 AWS_DEFAULT_REGION = "us-east-1"
 
 
-@lx.providers.registry.register(r"^bedrock", priority=10)
+@lx.providers.registry.register(r"^bedrock/", priority=10)
 class BedrockLanguageModel(lx.inference.BaseLanguageModel):
     """LangExtract provider for Bedrock.
 
-    This provider handles model IDs matching: ['^bedrock']
+    This provider handles model IDs matching: ['^bedrock/']
     """
 
     def __init__(self, model_id: str, api_method: str = "converse", **kwargs):
@@ -25,7 +25,7 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
             **kwargs: Additional provider-specific parameters.
         """
         super().__init__()
-        self.model_id = model_id
+        self.model_id = model_id.replace("bedrock/", "")
         self.process_prompt_fn = self.get_process_prompt_fn(api_method)
 
         has_bearer_token = "AWS_BEARER_TOKEN_BEDROCK" in os.environ

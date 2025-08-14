@@ -48,14 +48,11 @@ class DummyConverseClientTools:
         }
 
 
-def _aws_available() -> bool:
-    return ("AWS_BEARER_TOKEN_BEDROCK" in os.environ) or (
-        "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ
-    )
+from .utils import aws_available
 
 
 def test_converse_without_tools(monkeypatch):
-    if not _aws_available():
+    if not aws_available():
         pytest.skip("AWS Bedrock environment not configured")
 
     from langextract_bedrock.provider import BedrockLanguageModel
@@ -75,7 +72,7 @@ def test_converse_without_tools(monkeypatch):
 
 
 def test_converse_with_tools(monkeypatch):
-    if not _aws_available():
+    if not aws_available():
         pytest.skip("AWS Bedrock environment not configured")
 
     from langextract_bedrock.provider import BedrockLanguageModel

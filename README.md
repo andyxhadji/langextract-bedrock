@@ -10,20 +10,26 @@ pip install -e .
 
 ## Supported Model IDs
 
-- `bedrock*`: Models matching pattern ^bedrock
+You can use any AWS Bedrock model by specifying it's ARN, for example:
+
+```python
+config = factory.ModelConfig(model_id="anthropic.claude-3-5-sonnet-20240620-v1:0", provider="BedrockLanguageModel")
+model = factory.create_model(config)
+```
 
 ## Environment Variables
 
-- `BEDROCK_API_KEY`: API key for authentication
+-
 
 ## Usage
+Use with `lx.extract` by pre-pending the ARN with `bedrock/`:
 
 ```python
 import langextract as lx
 
 result = lx.extract(
     text="Your document here",
-    model_id="bedrock-model",
+    model_id="bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0",
     prompt_description="Extract entities",
     examples=[...]
 )
