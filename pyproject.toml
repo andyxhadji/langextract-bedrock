@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "langextract-bedrock"
 version = "0.1.0"
-description = "LangExtract provider plugin for Bedrock"
-authors = [{name = "Andy Hadjigeorgiou"}]
+description = "LangExtract provider plugin for AWS Bedrock"
+authors = [{name = "Andy Hadjigeorgiou", email = "andyxhadji@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 dependencies = [
     "langextract>=1.0.0",
-    # Add your provider's SDK dependencies here
+    "boto3>=1.40.9"
 ]
 
 [project.entry-points."langextract.providers"]

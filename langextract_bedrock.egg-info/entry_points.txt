@@ -1,2 +1,0 @@
-[langextract.providers]
-bedrock = langextract_bedrock.provider:BedrockLanguageModel
