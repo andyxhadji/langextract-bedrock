@@ -32,11 +32,12 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         has_aws_creds = (
             "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ
         )
+        aws_profile = os.environ.get("AWS_PROFILE", False)
 
-        if not (has_bearer_token or has_aws_creds):
+        if not (has_bearer_token or has_aws_creds or aws_profile):
             raise ValueError(
                 "Either AWS_BEARER_TOKEN_BEDROCK or"
-                " AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY must be set"
+                " AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or AWS_PROFILE must be set"
             )
 
         # Set region, defaulting to us-east-1 if not specified
@@ -45,10 +46,15 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         else:
             region = AWS_DEFAULT_REGION
 
-        # Allow tests to inject a fake client
-        self.client = kwargs.get("client") or boto3.client(
-            service_name="bedrock-runtime", region_name=region
-        )
+        if aws_profile:
+            session = boto3.Session(profile_name=aws_profile)
+            self.client = session.client(
+                service_name="bedrock-runtime", region_name=region
+            )
+        else:
+            self.client = boto3.client(
+                service_name="bedrock-runtime", region_name=region
+            )
 
     def get_process_prompt_fn(self, api_method):
         if api_method == "converse":

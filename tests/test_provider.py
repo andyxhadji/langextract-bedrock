@@ -15,7 +15,7 @@ def test_provider_registration_and_resolve(monkeypatch):
     from langextract.providers import registry
 
     # Note: this won't happen because of naming conventions in bedrock, but just to test loading
-    resolved = registry.resolve("bedrock-claude")
+    resolved = registry.resolve("bedrock/fake-model")
     assert resolved.__name__ == "BedrockLanguageModel"
 
 
