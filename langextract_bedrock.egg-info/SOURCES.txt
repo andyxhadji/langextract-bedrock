@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+langextract_bedrock/__init__.py
+langextract_bedrock/provider.py
+langextract_bedrock.egg-info/PKG-INFO
+langextract_bedrock.egg-info/SOURCES.txt
+langextract_bedrock.egg-info/dependency_links.txt
+langextract_bedrock.egg-info/entry_points.txt
+langextract_bedrock.egg-info/requires.txt
+langextract_bedrock.egg-info/top_level.txt
