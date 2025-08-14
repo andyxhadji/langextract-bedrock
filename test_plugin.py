@@ -3,6 +3,7 @@
 
 import re
 import sys
+
 import langextract as lx
 from langextract.providers import registry
 
@@ -15,15 +16,17 @@ except ImportError:
 lx.providers.load_plugins_once()
 
 PROVIDER_CLS_NAME = "BedrockLanguageModel"
-PATTERNS = ['^bedrock']
+PATTERNS = ["^bedrock"]
+
 
 def _example_id(pattern: str) -> str:
     """Generate test model ID from pattern."""
-    base = re.sub(r'^\^', '', pattern)
+    base = re.sub(r"^\^", "", pattern)
     m = re.match(r"[A-Za-z0-9._-]+", base)
     base = m.group(0) if m else (base or "model")
     return "meta.llama3-8b-instruct-v1:0"
     return f"{base}-test"
+
 
 sample_ids = [_example_id(p) for p in PATTERNS]
 sample_ids.append("unknown-model")
@@ -38,8 +41,18 @@ for model_id in sample_ids:
         provider_class = registry.resolve(model_id)
         ok = provider_class.__name__ == PROVIDER_CLS_NAME
         status = "✓" if (ok or model_id == "unknown-model") else "✗"
-        note = "expected" if ok else ("expected (no provider)" if model_id == "unknown-model" else "unexpected provider")
-        print(f"   {status} {model_id} -> {provider_class.__name__ if ok else 'resolved'} {note}")
+        note = (
+            "expected"
+            if ok
+            else (
+                "expected (no provider)"
+                if model_id == "unknown-model"
+                else "unexpected provider"
+            )
+        )
+        print(
+            f"   {status} {model_id} -> {provider_class.__name__ if ok else 'resolved'} {note}"
+        )
     except Exception as e:
         if model_id == "unknown-model":
             print(f"   ✓ {model_id}: No provider found (expected)")
@@ -49,10 +62,45 @@ for model_id in sample_ids:
 # 3. Inference sanity check (converse)
 print("\n3a. Test inference with sample prompts (converse)")
 try:
-    model_id = sample_ids[0] if sample_ids[0] != "unknown-model" else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
-    provider = BedrockLanguageModel(model_id=model_id, api_method='converse')
-    prompts = ["Test prompt 1", "Test prompt 2"]
-    results = list(provider.infer(prompts, temperature=0.0, top_p=1.0, max_tokens=1000))
+    model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    # model_id = sample_ids[0] if sample_ids[0] != "unknown-model" else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
+    # Define a dummy tool spec and executor that returns JSON
+    tools = [
+        {
+            "toolSpec": {
+                "name": "calculate_sum",
+                "inputSchema": {
+                    "json": {
+                        "type": "object",
+                        "properties": {
+                            "a": {"type": "number"},
+                            "b": {"type": "number"},
+                        },
+                        "required": ["a", "b"],
+                    }
+                },
+            }
+        }
+    ]
+
+    def exec_calculate_sum(inp):
+        return {"sum": inp.get("a", 0) + inp.get("b", 0)}
+
+    tool_executor = {"calculate_sum": exec_calculate_sum}
+
+    provider = BedrockLanguageModel(model_id=model_id, api_method="converse")
+    prompts = ["What is the sum of 1 and 2?"]
+    results = list(
+        provider.infer(
+            prompts,
+            temperature=0.0,
+            top_p=1.0,
+            max_tokens=1000,
+            tools=tools,
+            tool_executor=tool_executor,
+            tool_choice={"tool": {"name": "calculate_sum"}},
+        )
+    )
     print(f"   ✓ Converse returned {len(results)} results")
     for i, result in enumerate(results):
         try:
@@ -63,11 +111,36 @@ try:
 except Exception as e:
     print(f"   ✗ ERROR (converse): {e}")
 
+# 3a. (No tools) Inference sanity check (converse without tool use)
+print("\n3a. (no-tools) Test inference with sample prompts (converse)")
+try:
+    model_id = (
+        sample_ids[0]
+        if sample_ids[0] != "unknown-model"
+        else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
+    )
+    provider = BedrockLanguageModel(model_id=model_id, api_method="converse")
+    prompts = ["Hello there", "Give me a short summary of LLMs"]
+    results = list(provider.infer(prompts, temperature=0.0, top_p=1.0, max_tokens=200))
+    print(f"   ✓ Converse (no-tools) returned {len(results)} results")
+    for i, result in enumerate(results):
+        try:
+            out = result[0].output if result and result[0] else None
+            print(f"   ✓ Converse (no-tools) {i+1}: {(out or '')[:60]}...")
+        except Exception:
+            print(f"   ✗ Converse (no-tools) {i+1}: Unexpected result shape: {result}")
+except Exception as e:
+    print(f"   ✗ ERROR (converse no-tools): {e}")
+
 # 3b. Inference sanity check (invoke)
 print("\n3b. Test inference with sample prompts (invoke)")
 try:
-    model_id = sample_ids[0] if sample_ids[0] != "unknown-model" else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
-    provider = BedrockLanguageModel(model_id=model_id, api_method='invoke')
+    model_id = (
+        sample_ids[0]
+        if sample_ids[0] != "unknown-model"
+        else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
+    )
+    provider = BedrockLanguageModel(model_id=model_id, api_method="invoke")
     # Bedrock invoke expects JSON body; pass simple JSON strings
     prompts = ["Human: Test prompt 1. Assistant:", "Human: Test prompt 2. Assistant:"]
     results = list(provider.infer(prompts))
@@ -75,7 +148,7 @@ try:
     for i, result in enumerate(results):
         try:
             out = result[0].output if result and result[0] else None
-            preview = out.decode() if hasattr(out, 'decode') else str(out)
+            preview = out.decode() if hasattr(out, "decode") else str(out)
             print(f"   ✓ Invoke {i+1}: {preview[:60]}...")
         except Exception:
             print(f"   ✗ Invoke {i+1}: Unexpected result shape: {result}")
@@ -86,9 +159,10 @@ except Exception as e:
 print("\n5. Test factory integration")
 try:
     from langextract import factory
+
     config = factory.ModelConfig(
         model_id=_example_id(PATTERNS[0]) if PATTERNS else "test-model",
-        provider="BedrockLanguageModel"
+        provider="BedrockLanguageModel",
     )
     model = factory.create_model(config)
     print(f"   ✓ Factory created: {type(model).__name__}")
