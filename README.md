@@ -1,6 +1,6 @@
-        # LangExtract Bedrock Provider
+# LangExtract AWS Bedrock Provider
 
-A provider plugin for LangExtract that supports Bedrock models.
+A provider plugin for LangExtract that supports AWS Bedrock models.
 
 ## Installation
 
@@ -19,17 +19,19 @@ model = factory.create_model(config)
 
 ## Environment Variables
 
-- Set any of the following environment variables:
+Set any of the following environment variables:
 
 For credentials:
--- `AWS_PROFILE`
--- `AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`
+
+- `AWS_PROFILE`
+- `AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`
 
 For settings:
--- `AWS_DEFAULT_REGION` (defaults to us-east-1)
+
+- `AWS_DEFAULT_REGION` (defaults to us-east-1)
 
 ## Usage
-Use with `lx.extract` by pre-pending the ARN with `bedrock/`:
+Use with `lx.extract` by pre-pending the model ARN with `bedrock/`:
 
 ```python
 import langextract as lx
