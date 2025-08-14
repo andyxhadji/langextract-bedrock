@@ -1,5 +1,6 @@
 """Provider implementation for Bedrock."""
 
+import concurrent.futures
 import json
 import os
 
@@ -16,17 +17,25 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
     This provider handles model IDs matching: ['^bedrock/']
     """
 
-    def __init__(self, model_id: str, api_method: str = "converse", **kwargs):
+    def __init__(
+        self,
+        model_id: str,
+        api_method: str = "converse",
+        max_workers: int = 1,
+        **kwargs,
+    ):
         """Initialize the Bedrock provider.
 
         Args:
             model_id: The model identifier.
             api_key: API key for authentication.
+            max_workers: The maximum number of workers to use for parallel inference.
             **kwargs: Additional provider-specific parameters.
         """
         super().__init__()
         self.model_id = model_id.replace("bedrock/", "")
         self.process_prompt_fn = self.get_process_prompt_fn(api_method)
+        self.max_workers = max_workers
 
         has_bearer_token = "AWS_BEARER_TOKEN_BEDROCK" in os.environ
         has_aws_creds = (
@@ -182,12 +191,45 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         tools = kwargs.get("tools", None)
         tool_choice = kwargs.get("tool_choice", {"auto": {}})
         tool_executor = kwargs.get("tool_executor", None)
-        for prompt in batch_prompts:
-            result = self.process_prompt_fn(
-                prompt,
-                config,
-                tools=tools,
-                tool_executor=tool_executor,
-                tool_choice=tool_choice,
-            )
-            yield [lx.inference.ScoredOutput(score=1.0, output=result)]
+
+        if len(batch_prompts) > 1 and self.max_workers > 1:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(self.max_workers, len(batch_prompts))
+            ) as executor:
+                future_to_index = {
+                    executor.submit(
+                        self.process_prompt_fn,
+                        prompt,
+                        config,
+                        tools,
+                        tool_executor,
+                        tool_choice,
+                    ): i
+                    for i, prompt in enumerate(batch_prompts)
+                }
+
+                results = [None] * len(batch_prompts)
+                for future in concurrent.futures.as_completed(future_to_index):
+                    index = future_to_index[future]
+                    try:
+                        output = future.result()
+                        results[index] = lx.inference.ScoredOutput(
+                            score=1.0, output=output
+                        )
+                    except Exception as e:
+                        raise RuntimeError(f"Parallel inference error: {str(e)}") from e
+
+                for result in results:
+                    if result is None:
+                        raise RuntimeError("Failed to process one or more prompts")
+                    yield [result]
+        else:
+            for prompt in batch_prompts:
+                output = self.process_prompt_fn(
+                    prompt,
+                    config,
+                    tools=tools,
+                    tool_executor=tool_executor,
+                    tool_choice=tool_choice,
+                )
+                yield [lx.inference.ScoredOutput(score=1.0, output=output)]
