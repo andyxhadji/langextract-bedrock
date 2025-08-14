@@ -1,8 +1,11 @@
 """Provider implementation for Bedrock."""
 
 import os
+import json
+import boto3
 import langextract as lx
 
+AWS_DEFAULT_REGION = 'us-east-1'
 
 @lx.providers.registry.register(r'^bedrock', priority=10)
 class BedrockLanguageModel(lx.inference.BaseLanguageModel):
@@ -11,7 +14,7 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
     This provider handles model IDs matching: ['^bedrock']
     """
 
-    def __init__(self, model_id: str, api_key: str = None, **kwargs):
+    def __init__(self, model_id: str, **kwargs):
         """Initialize the Bedrock provider.
 
         Args:
@@ -21,10 +24,47 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         """
         super().__init__()
         self.model_id = model_id
-        self.api_key = api_key or os.environ.get('BEDROCK_API_KEY')
+        has_bearer_token = 'AWS_BEARER_TOKEN_BEDROCK' in os.environ
+        has_aws_creds = (
+            'AWS_ACCESS_KEY_ID' in os.environ
+            and 'AWS_SECRET_ACCESS_KEY' in os.environ
+        )
 
-        # self.client = YourClient(api_key=self.api_key)
-        self._extra_kwargs = kwargs
+        if not (has_bearer_token or has_aws_creds):
+            raise ValueError(
+                'Either AWS_BEARER_TOKEN_BEDROCK or'
+                ' AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY must be set'
+            )
+
+        # Set region, defaulting to us-east-1 if not specified
+        if 'AWS_DEFAULT_REGION' in os.environ:
+            region = os.environ['AWS_DEFAULT_REGION']
+        else:
+            region = AWS_DEFAULT_REGION
+
+        self.client = boto3.client(
+            service_name='bedrock-runtime', region_name=region
+        )
+
+    def set_config(self, kwargs):
+        config = {}
+        if 'temperature' in kwargs:
+            config['temperature'] = kwargs['temperature']
+        if 'top_p' in kwargs:
+            config['topP'] = kwargs['top_p']
+        if 'max_tokens' in kwargs:
+            config['maxTokens'] = kwargs['max_tokens']
+        return config
+
+    def _process_prompt(self, prompt, config):
+        response = self.client.converse(
+            modelId=self.model_id,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig=config
+        )
+        output_text = response['output']['message']['content'][0]['text']
+
+        return output_text
 
     def infer(self, batch_prompts, **kwargs):
         """Run inference on a batch of prompts.
@@ -36,7 +76,8 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         Yields:
             Lists of ScoredOutput objects, one per prompt.
         """
+        config = self.set_config(kwargs)
+
         for prompt in batch_prompts:
-            # result = self.client.generate(prompt, **kwargs)
-            result = f"Mock response for: {prompt[:50]}..."
+            result = self._process_prompt(prompt, config)
             yield [lx.inference.ScoredOutput(score=1.0, output=result)]

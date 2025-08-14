@@ -22,6 +22,7 @@ def _example_id(pattern: str) -> str:
     base = re.sub(r'^\^', '', pattern)
     m = re.match(r"[A-Za-z0-9._-]+", base)
     base = m.group(0) if m else (base or "model")
+    return "anthropic.claude-3-5-sonnet-20240620-v1:0"
     return f"{base}-test"
 
 sample_ids = [_example_id(p) for p in PATTERNS]
@@ -51,7 +52,7 @@ try:
     model_id = sample_ids[0] if sample_ids[0] != "unknown-model" else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
     provider = BedrockLanguageModel(model_id=model_id)
     prompts = ["Test prompt 1", "Test prompt 2"]
-    results = list(provider.infer(prompts))
+    results = list(provider.infer(prompts, temperature=0.0, top_p=1.0, max_tokens=1000))
     print(f"   ✓ Inference returned {len(results)} results")
     for i, result in enumerate(results):
         try:

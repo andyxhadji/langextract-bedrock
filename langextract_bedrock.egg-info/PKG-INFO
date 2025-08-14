@@ -8,7 +8,7 @@ Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: langextract>=1.0.0
-Requires-Dist: boto3<2.0.0,>=1.40.9
+Requires-Dist: boto3>=1.40.9
 Dynamic: license-file
 
         # LangExtract Bedrock Provider
