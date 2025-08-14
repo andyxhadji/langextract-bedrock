@@ -38,7 +38,7 @@ result = lx.extract(
 ## Development
 
 1. Install in development mode: `pip install -e .`
-2. Run tests: `python test_plugin.py`
+2. Run tests: `python test_plugin.py`, `pytest -v tests/` (run pytest with AWS creds for AWS Bedrock inference tests)
 3. Build package: `python -m build`
 4. Publish to PyPI: `twine upload dist/*`
 
