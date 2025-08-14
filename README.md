@@ -19,7 +19,14 @@ model = factory.create_model(config)
 
 ## Environment Variables
 
--
+- Set any of the following environment variables:
+
+For credentials:
+-- `AWS_PROFILE`
+-- `AWS_ACCESS_KEY_ID` & `AWS_SECRET_ACCESS_KEY`
+
+For settings:
+-- `AWS_DEFAULT_REGION` (defaults to us-east-1)
 
 ## Usage
 Use with `lx.extract` by pre-pending the ARN with `bedrock/`:
