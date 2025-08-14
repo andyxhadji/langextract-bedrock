@@ -74,7 +74,6 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         self,
         prompt,
         config,
-        *,
         tools=None,
         tool_executor=None,
         tool_choice={"auto": {}},
