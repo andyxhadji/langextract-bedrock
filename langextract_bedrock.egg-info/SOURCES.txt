@@ -9,3 +9,4 @@ langextract_bedrock.egg-info/dependency_links.txt
 langextract_bedrock.egg-info/entry_points.txt
 langextract_bedrock.egg-info/requires.txt
 langextract_bedrock.egg-info/top_level.txt
+tests/test_provider.py

@@ -140,4 +140,39 @@ def test_factory_integration_with_provider_name(monkeypatch):
     outputs = list(model.infer(['hi there']))
     assert outputs and outputs[0] and outputs[0][0].output.startswith('Echo: hi there')
 
+def test_infer_with_invoke_api_method(monkeypatch):
+    # Arrange env and stub client
+    monkeypatch.setenv('AWS_BEARER_TOKEN_BEDROCK', 'dummy')
+    monkeypatch.setenv('AWS_DEFAULT_REGION', 'us-east-1')
+
+    import boto3
+
+    class DummyBody:
+        def __init__(self, text: str):
+            self._text = text
+
+        def read(self):
+            return self._text
+
+    class DummyClient:
+        def invoke_model(self, **kwargs):
+            # Accept arbitrary kwargs (including nonstandard 'config') to match provider call
+            prompt = kwargs.get('body', '')
+            return {
+                'body': DummyBody(f"InvokeEcho: {str(prompt)[:20]}")
+            }
+
+    monkeypatch.setattr(boto3, 'client', lambda service_name, region_name=None: DummyClient())
+
+    from langextract_bedrock.provider import BedrockLanguageModel
+
+    # Act
+    provider = BedrockLanguageModel(model_id='fake-model', api_method='invoke')
+    results = list(provider.infer(['Hello world from invoke']))
+
+    # Assert
+    assert len(results) == 1
+    assert len(results[0]) == 1
+    assert results[0][0].output.startswith('InvokeEcho: Hello wor')
+
 

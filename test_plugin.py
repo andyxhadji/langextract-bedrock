@@ -22,7 +22,7 @@ def _example_id(pattern: str) -> str:
     base = re.sub(r'^\^', '', pattern)
     m = re.match(r"[A-Za-z0-9._-]+", base)
     base = m.group(0) if m else (base or "model")
-    return "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    return "meta.llama3-8b-instruct-v1:0"
     return f"{base}-test"
 
 sample_ids = [_example_id(p) for p in PATTERNS]
@@ -46,22 +46,41 @@ for model_id in sample_ids:
         else:
             print(f"   ✗ {model_id}: resolve() failed: {e}")
 
-# 3. Inference sanity check
-print("\n3. Test inference with sample prompts")
+# 3. Inference sanity check (converse)
+print("\n3a. Test inference with sample prompts (converse)")
 try:
     model_id = sample_ids[0] if sample_ids[0] != "unknown-model" else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
-    provider = BedrockLanguageModel(model_id=model_id)
+    provider = BedrockLanguageModel(model_id=model_id, api_method='converse')
     prompts = ["Test prompt 1", "Test prompt 2"]
     results = list(provider.infer(prompts, temperature=0.0, top_p=1.0, max_tokens=1000))
-    print(f"   ✓ Inference returned {len(results)} results")
+    print(f"   ✓ Converse returned {len(results)} results")
     for i, result in enumerate(results):
         try:
             out = result[0].output if result and result[0] else None
-            print(f"   ✓ Result {i+1}: {(out or '')[:60]}...")
+            print(f"   ✓ Converse {i+1}: {(out or '')[:60]}...")
         except Exception:
-            print(f"   ✗ Result {i+1}: Unexpected result shape: {result}")
+            print(f"   ✗ Converse {i+1}: Unexpected result shape: {result}")
 except Exception as e:
-    print(f"   ✗ ERROR: {e}")
+    print(f"   ✗ ERROR (converse): {e}")
+
+# 3b. Inference sanity check (invoke)
+print("\n3b. Test inference with sample prompts (invoke)")
+try:
+    model_id = sample_ids[0] if sample_ids[0] != "unknown-model" else (_example_id(PATTERNS[0]) if PATTERNS else "test-model")
+    provider = BedrockLanguageModel(model_id=model_id, api_method='invoke')
+    # Bedrock invoke expects JSON body; pass simple JSON strings
+    prompts = ["Human: Test prompt 1. Assistant:", "Human: Test prompt 2. Assistant:"]
+    results = list(provider.infer(prompts))
+    print(f"   ✓ Invoke returned {len(results)} results")
+    for i, result in enumerate(results):
+        try:
+            out = result[0].output if result and result[0] else None
+            preview = out.decode() if hasattr(out, 'decode') else str(out)
+            print(f"   ✓ Invoke {i+1}: {preview[:60]}...")
+        except Exception:
+            print(f"   ✗ Invoke {i+1}: Unexpected result shape: {result}")
+except Exception as e:
+    print(f"   ✗ ERROR (invoke): {e}")
 
 # 5. Test factory integration
 print("\n5. Test factory integration")

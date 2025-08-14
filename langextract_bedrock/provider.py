@@ -14,7 +14,7 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
     This provider handles model IDs matching: ['^bedrock']
     """
 
-    def __init__(self, model_id: str, **kwargs):
+    def __init__(self, model_id: str, api_method: str = 'converse', **kwargs):
         """Initialize the Bedrock provider.
 
         Args:
@@ -24,6 +24,8 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         """
         super().__init__()
         self.model_id = model_id
+        self.process_prompt_fn = self.get_process_prompt_fn(api_method)
+
         has_bearer_token = 'AWS_BEARER_TOKEN_BEDROCK' in os.environ
         has_aws_creds = (
             'AWS_ACCESS_KEY_ID' in os.environ
@@ -46,6 +48,14 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
             service_name='bedrock-runtime', region_name=region
         )
 
+    def get_process_prompt_fn(self, api_method):
+        if api_method == 'converse':
+            return self._process_prompt_converse
+        elif api_method == 'invoke':
+            return self._process_prompt_invoke
+        else:
+            raise ValueError(f"Invalid API method: {api_method}")
+
     def set_config(self, kwargs):
         config = {}
         if 'temperature' in kwargs:
@@ -54,9 +64,11 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
             config['topP'] = kwargs['top_p']
         if 'max_tokens' in kwargs:
             config['maxTokens'] = kwargs['max_tokens']
+        if 'max_tokens_to_sample' in kwargs:
+            config['max_tokens_to_sample'] = kwargs['max_tokens_to_sample']
         return config
 
-    def _process_prompt(self, prompt, config):
+    def _process_prompt_converse(self, prompt, config):
         response = self.client.converse(
             modelId=self.model_id,
             messages=[{"role": "user", "content": [{"text": prompt}]}],
@@ -65,6 +77,19 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         output_text = response['output']['message']['content'][0]['text']
 
         return output_text
+
+    def _process_prompt_invoke(self, prompt, config):
+        body = {
+            'prompt': prompt,
+        }
+        body.update(config)
+        response = self.client.invoke_model(
+            modelId=self.model_id,
+            body=json.dumps(body),
+            contentType='application/json',
+            accept='application/json'
+        )
+        return response.get('body').read()
 
     def infer(self, batch_prompts, **kwargs):
         """Run inference on a batch of prompts.
@@ -79,5 +104,5 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         config = self.set_config(kwargs)
 
         for prompt in batch_prompts:
-            result = self._process_prompt(prompt, config)
+            result = self.process_prompt_fn(prompt, config)
             yield [lx.inference.ScoredOutput(score=1.0, output=result)]
