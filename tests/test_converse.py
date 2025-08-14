@@ -64,12 +64,13 @@ def test_converse_without_tools(monkeypatch):
         model_id=os.environ.get("BEDROCK_MODEL_ID", "meta.llama3-8b-instruct-v1:0")
     )
 
-    prompts = ["Hello there", "Give me a short summary of LLMs"]
+    prompts = ["Hello there", "What is the capital of France?"]
     results = list(provider.infer(prompts, temperature=0.0, top_p=1.0, max_tokens=128))
 
     assert len(results) == 2
     assert all(isinstance(batch, list) and len(batch) == 1 for batch in results)
     out0 = results[0][0].output
+    assert "Paris" in results[1][0].output
     assert isinstance(out0, str) and len(out0) > 0
 
 
