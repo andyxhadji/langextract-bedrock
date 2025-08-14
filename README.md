@@ -5,7 +5,7 @@ A provider plugin for LangExtract that supports AWS Bedrock models.
 ## Installation
 
 ```bash
-pip install -e .
+pip install langextract-bedrock
 ```
 
 ## Supported Model IDs
