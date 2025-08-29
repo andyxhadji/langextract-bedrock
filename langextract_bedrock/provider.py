@@ -4,6 +4,8 @@ import concurrent.futures
 import json
 import os
 
+from absl import logging
+
 import boto3
 import langextract as lx
 
@@ -43,7 +45,22 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
         )
         aws_profile = os.environ.get("AWS_PROFILE", False)
 
-        if not (has_bearer_token or has_aws_creds or aws_profile):
+        # Check if running in SageMaker by looking for environment variables and filesystem indicators
+        is_sagemaker = (
+            "TRAINING_JOB_ARN" in os.environ
+            or "SAGEMAKER_JOB_NAME" in os.environ
+            or "SM_MODEL_DIR" in os.environ
+            or "SM_CHANNEL" in os.environ
+            or "SAGEMAKER_CONTAINER_LOG_LEVEL" in os.environ
+            or os.path.exists("/opt/ml")
+            or os.path.exists("/opt/amazon")
+        )
+        logging.debug(f"[bedrock_provider] has_bearer_token: {has_bearer_token}")
+        logging.debug(f"[bedrock_provider] has_aws_creds: {has_aws_creds}")
+        logging.debug(f"[bedrock_provider] aws_profile: {aws_profile}")
+        logging.debug(f"[bedrock_provider] aws_profile: {is_sagemaker}")
+
+        if not (has_bearer_token or has_aws_creds or aws_profile) and not is_sagemaker:
             raise ValueError(
                 "Either AWS_BEARER_TOKEN_BEDROCK or"
                 " AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or AWS_PROFILE must be set"
