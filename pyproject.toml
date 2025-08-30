@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "langextract-bedrock"
-version = "0.1.1"
+version = "0.1.2"
 description = "LangExtract provider plugin for AWS Bedrock"
 authors = [{name = "Andy Hadjigeorgiou", email = "andyxhadji@gmail.com"}]
 readme = "README.md"
