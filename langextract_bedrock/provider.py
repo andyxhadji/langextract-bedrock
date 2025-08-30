@@ -42,10 +42,11 @@ class BedrockLanguageModel(lx.inference.BaseLanguageModel):
             "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ
         )
         aws_profile = os.environ.get("AWS_PROFILE", False)
+        has_default_region = "AWS_DEFAULT_REGION" in os.environ
 
-        if not (has_bearer_token or has_aws_creds or aws_profile):
+        if not (has_bearer_token or has_aws_creds or aws_profile or has_default_region):
             raise ValueError(
-                "Either AWS_BEARER_TOKEN_BEDROCK or"
+                "Either AWS_BEARER_TOKEN_BEDROCK, AWS_DEFAULT_REGION,"
                 " AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or AWS_PROFILE must be set"
             )
 
