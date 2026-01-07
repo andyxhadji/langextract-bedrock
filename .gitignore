@@ -48,3 +48,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.backup
+
+# UV
+uv.lock
