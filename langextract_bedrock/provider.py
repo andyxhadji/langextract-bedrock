@@ -275,6 +275,11 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
 
             response = self.client.converse(**followup_kwargs)
             content = response.get("output", {}).get("message", {}).get("content", [])
+        elif tool_use_part and not tool_executor:
+            # Schema-based extraction: tool was used but no executor needed
+            # The structured data is in toolUse.input, return it directly
+            tool_input = tool_use_part.get("input") or {}
+            return json.dumps(tool_input)
 
         for part in content:
             if isinstance(part, dict) and "text" in part:
