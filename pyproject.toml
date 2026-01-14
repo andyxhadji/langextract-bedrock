@@ -21,3 +21,8 @@ bedrock = "langextract_bedrock.provider:BedrockLanguageModel"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["langextract_bedrock*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
