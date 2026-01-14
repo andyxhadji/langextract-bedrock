@@ -1,7 +1,7 @@
 """Bedrock provider implementation for LangExtract.
 
 This module provides BedrockLanguageModel, which integrates AWS Bedrock's
-Converse API with LangExtract for structured information extraction.
+Converse & invoke APIs with LangExtract for structured information extraction.
 
 Supports two modes of operation:
 1. Tool Use Mode (use_schema_constraints=True, fence_output=False):
@@ -29,9 +29,9 @@ AWS_DEFAULT_REGION = "us-east-1"
 
 @lx.providers.registry.register(r"^bedrock/", priority=10)
 class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
-    """LangExtract provider for AWS Bedrock.
+    """LangExtract provider for Bedrock.
 
-    This provider handles model IDs matching the pattern: '^bedrock/'
+    This provider handles model IDs matching: ['^bedrock/']
 
     Example model IDs:
         - bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
@@ -470,8 +470,6 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
                         "name": "extract_structured_data",
                         "description": (
                             "MANDATORY: You MUST call this tool to return extraction results. "
-                            "Do NOT respond with text - ONLY use this tool. "
-                            "Even if you find no entities, call with empty extractions array. "
                             "All attribute values must be simple strings or numbers. "
                             "For multiple values, use comma-separated strings."
                         ),
