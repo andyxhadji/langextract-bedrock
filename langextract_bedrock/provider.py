@@ -102,6 +102,18 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             BedrockToolUseSchema class for use_schema_constraints=True
         """
         return BedrockToolUseSchema
+
+    def apply_schema(self, schema_instance: BedrockToolUseSchema | None) -> None:
+        """Apply a schema instance to this provider.
+
+        Args:
+            schema_instance: The schema instance to apply, or None to clear.
+        """
+        super().apply_schema(schema_instance)
+        if isinstance(schema_instance, BedrockToolUseSchema):
+            self._bedrock_schema = schema_instance
+        else:
+            self._bedrock_schema = None
     
 
     def _get_process_prompt_fn(self, api_method: str):
@@ -124,11 +136,11 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             raise ValueError(f"Invalid API method: {api_method}")
         
 
-    def _build_inference_config(self, kwargs: dict[str, Any]) -> dict[str, Any]:
-        """Build Bedrock inference configuration from kwargs.
+    def set_config(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Convert kwargs to Bedrock inference configuration format.
 
         Args:
-            kwargs: Keyword arguments that may contain inference parameters
+            kwargs: Dict with standard parameter names
 
         Returns:
             Dict with Bedrock-compatible inference config
@@ -145,6 +157,17 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             config["max_tokens_to_sample"] = kwargs["max_tokens_to_sample"]
 
         return config
+
+    def _build_inference_config(self, kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Build Bedrock inference configuration from kwargs.
+
+        Args:
+            kwargs: Keyword arguments that may contain inference parameters
+
+        Returns:
+            Dict with Bedrock-compatible inference config
+        """
+        return self.set_config(kwargs)
     
 
     def _sanitize_tool_output(self, tool_input: dict[str, Any]) -> dict[str, Any]:
@@ -452,18 +475,19 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
                 - temperature: Sampling temperature (0.0 for deterministic)
                 - top_p: Top-p sampling parameter
                 - max_tokens: Maximum tokens to generate
-                - schema: JSON schema for structured output (from use_schema_constraints)
 
         Yields:
             Lists of ScoredOutput objects, one per prompt.
         """
         config = self._build_inference_config(kwargs)
 
-        # Check if schema was provided by langextract (use_schema_constraints=True)
-        schema_dict = kwargs.get("schema")
+        # Check if schema was applied via apply_schema() (use_schema_constraints=True)
+        # The schema is set by langextract's factory when creating the model
+        bedrock_schema = getattr(self, "_bedrock_schema", None)
 
-        if schema_dict is not None:
+        if bedrock_schema is not None:
             # Use Tool Use API for structured output
+            schema_dict = bedrock_schema.schema_dict
             tools = [
                 {
                     "toolSpec": {

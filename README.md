@@ -13,7 +13,10 @@ pip install langextract-bedrock
 You can use any AWS Bedrock model by specifying it's ARN, for example:
 
 ```python
-config = factory.ModelConfig(model_id="anthropic.claude-3-5-sonnet-20240620-v1:0", provider="BedrockLanguageModel")
+config = factory.ModelConfig(
+    model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+    provider="BedrockLanguageModel")
+
 model = factory.create_model(config)
 ```
 
@@ -43,6 +46,9 @@ result = lx.extract(
     examples=[...]
 )
 ```
+
+>[!NOTE]
+> Make sure you check the [list of available models.](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) and keep in mind some models need to be called with the zone to be use on-demand. (for example: "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
 
 ## Development
 
