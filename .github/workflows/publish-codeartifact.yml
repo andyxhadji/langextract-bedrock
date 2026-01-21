@@ -1,0 +1,80 @@
+name: Publish to CodeArtifact
+
+on:
+  release:
+    types: [published]
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build only, no publish)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  # ============================================
+  # CONFIGURE THESE VALUES FOR YOUR ENVIRONMENT
+  # ============================================
+  AWS_REGION: us-east-1                    # Your AWS region
+  CODEARTIFACT_DOMAIN: strata-analytics    # Your CodeArtifact domain
+  CODEARTIFACT_REPOSITORY: internal-pypi   # Your CodeArtifact repository
+  # AWS_ACCOUNT_ID is set from secrets
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC authentication with AWS
+
+jobs:
+  publish:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Verify build artifacts
+        run: |
+          ls -la dist/
+          twine check dist/*
+
+      - name: Configure AWS credentials
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsCodeArtifactPublish
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to CodeArtifact
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          aws codeartifact login \
+            --tool twine \
+            --domain ${{ env.CODEARTIFACT_DOMAIN }} \
+            --domain-owner ${{ secrets.AWS_ACCOUNT_ID }} \
+            --repository ${{ env.CODEARTIFACT_REPOSITORY }}
+
+      - name: Publish to CodeArtifact
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          twine upload --repository codeartifact dist/*
+
+      - name: Upload artifacts (for dry run inspection)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

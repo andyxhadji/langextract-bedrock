@@ -71,6 +71,7 @@ def test_lx_extract_with_examples_smoke(monkeypatch):
         prompt_description=prompt,
         examples=examples,
         model_id="bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0",
+        use_schema_constraints=True,
         extraction_passes=1,
         max_workers=1,
     )
@@ -89,8 +90,8 @@ def test_lx_extract_multiple_workers(monkeypatch):
     lx.providers.load_plugins_once()
 
     documents = [
-        "Alice met Bob in Paris.",
-        "John and Jane visited Boston.",
+        lx.data.Document(document_id="doc1", text="Alice met Bob in Paris."),
+        lx.data.Document(document_id="doc2", text="John and Jane visited Boston."),
     ]
 
     prompts = [
@@ -121,6 +122,7 @@ def test_lx_extract_multiple_workers(monkeypatch):
                 )
             ],
             model_id="bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0",
+            use_schema_constraints=True,
             extraction_passes=1,
             max_workers=2,
         )
