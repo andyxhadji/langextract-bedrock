@@ -130,6 +130,7 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
         model_id: str,
         api_method: str = "converse",
         max_workers: int = 1,
+        enable_prompt_caching: bool = True,
         **kwargs,
     ):
         """Initialize the Bedrock provider.
@@ -138,12 +139,14 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             model_id: The model identifier.
             api_key: API key for authentication.
             max_workers: The maximum number of workers to use for parallel inference.
+            enable_prompt_caching: Enable prompt caching for few-shot examples (default: True).
             **kwargs: Additional provider-specific parameters.
         """
         super().__init__()
         self.model_id = model_id.replace("bedrock/", "")
         self.process_prompt_fn = self.get_process_prompt_fn(api_method)
         self.max_workers = max_workers
+        self.enable_prompt_caching = enable_prompt_caching
 
         has_bearer_token = "AWS_BEARER_TOKEN_BEDROCK" in os.environ
         has_aws_creds = (
@@ -205,6 +208,30 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             config["max_tokens_to_sample"] = kwargs["max_tokens_to_sample"]
         return config
 
+    def _split_prompt_for_caching(self, prompt: str) -> tuple[str, str]:
+        """Split langextract prompt into cacheable and query parts.
+
+        langextract generates prompts in the format:
+        - Description (task instructions)
+        - Few-shot examples (Q: ... A: ... format)
+        - Current question (final Q: ... A:)
+
+        Args:
+            prompt: Full prompt from langextract
+
+        Returns:
+            (static_content, query_content): Static part and query part
+        """
+        # Split by the last "Q: " to separate examples from actual query
+        parts = prompt.rsplit("\nQ: ", 1)
+
+        if len(parts) == 2:
+            static_content = parts[0].strip()
+            query_content = "Q: " + parts[1]
+            return static_content, query_content
+        else:
+            return "", prompt
+
     def _process_prompt_converse(
         self,
         prompt,
@@ -213,7 +240,25 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
         tool_executor=None,
         tool_choice={"auto": {}},
     ):
-        messages = [{"role": "user", "content": [{"text": prompt}]}]
+        # Build message content with optional caching
+        if self.enable_prompt_caching:
+            static_content, query_content = self._split_prompt_for_caching(prompt)
+
+            if static_content:
+                # Split successful - use cachePoint
+                message_content = [
+                    {"text": static_content},
+                    {"cachePoint": {"type": "default"}},
+                    {"text": query_content}
+                ]
+            else:
+                # Split failed - send as-is without cachePoint
+                message_content = [{"text": query_content}]
+        else:
+            # Caching disabled - send entire prompt without cachePoint
+            message_content = [{"text": prompt}]
+
+        messages = [{"role": "user", "content": message_content}]
         kwargs = {
             "modelId": self.model_id,
             "messages": messages,
