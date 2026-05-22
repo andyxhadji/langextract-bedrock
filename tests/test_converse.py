@@ -217,9 +217,12 @@ def test_converse_schema_extraction_no_executor(monkeypatch):
     assert isinstance(output, str)
     parsed = json.loads(output)
 
-    # Verify the structure matches what was in toolUse.input
+    # Verify the structure is transformed to langextract format
+    # Tool Use returns: {"extractions": [{"extraction_class": "X", "extraction_text": "Y", ...}]}
+    # Provider transforms to: {"extractions": [{"X": "Y", "X_attributes": {...}}]}
     assert "extractions" in parsed
     assert len(parsed["extractions"]) == 2
-    assert parsed["extractions"][0]["extraction_class"] == "character"
-    assert parsed["extractions"][0]["extraction_text"] == "ROMEO"
-    assert parsed["extractions"][1]["extraction_text"] == "JULIET"
+    assert parsed["extractions"][0]["character"] == "ROMEO"
+    assert parsed["extractions"][0]["character_attributes"] == {"family": "Montague"}
+    assert parsed["extractions"][1]["character"] == "JULIET"
+    assert parsed["extractions"][1]["character_attributes"] == {"family": "Capulet"}
