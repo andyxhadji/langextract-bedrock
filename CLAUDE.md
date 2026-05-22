@@ -2,7 +2,9 @@
 
 ## Versioning
 
-**Bump the version in `langextract_bedrock/__init__.py` on every MR.**
+**Bump the version in both files on every MR:**
+- `langextract_bedrock/__init__.py`
+- `pyproject.toml`
 
 The version follows semver: `MAJOR.MINOR.PATCH`
 - PATCH: bug fixes, minor changes
