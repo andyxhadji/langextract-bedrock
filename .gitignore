@@ -51,3 +51,4 @@ Thumbs.db
 
 # UV
 uv.lock
+.kata.local.toml
