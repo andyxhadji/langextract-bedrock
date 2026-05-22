@@ -321,10 +321,26 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             response = self.client.converse(**followup_kwargs)
             content = response.get("output", {}).get("message", {}).get("content", [])
         elif tool_use_part and not tool_executor:
-            # Schema-based extraction: tool was used but no executor needed
-            # The structured data is in toolUse.input, return it directly
+            # Schema-based extraction: transform Tool Use output to langextract format
+            # Tool Use returns: {"extractions": [{"extraction_class": "X", "extraction_text": "Y", "attributes": {...}}]}
+            # langextract expects: {"extractions": [{"X": "Y", "X_attributes": {...}}]}
             tool_input = tool_use_part.get("input") or {}
-            return json.dumps(tool_input)
+            extractions = tool_input.get("extractions", [])
+            if not isinstance(extractions, list):
+                raise ValueError(f"Tool Use response has invalid 'extractions' type: {type(extractions).__name__}")
+            transformed = []
+            for ext in extractions:
+                if not isinstance(ext, dict):
+                    raise ValueError(f"Tool Use extraction item is not a dict: {type(ext).__name__}")
+                cls_name = ext.get("extraction_class")
+                if not cls_name:
+                    continue  # Skip extractions without a class name
+                item = {cls_name: ext.get("extraction_text", "")}
+                attrs = ext.get("attributes")
+                if attrs is not None:
+                    item[f"{cls_name}_attributes"] = attrs
+                transformed.append(item)
+            return json.dumps({"extractions": transformed})
 
         for part in content:
             if isinstance(part, dict) and "text" in part:
@@ -359,8 +375,11 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
         config = self.set_config(kwargs)
 
         # Check if schema was provided by langextract (when use_schema_constraints=True)
+        # Schema can come from kwargs OR from apply_schema() which stores in self._schema
         schema_dict = kwargs.get("schema", None)
-        
+        if schema_dict is None and self._schema is not None:
+            schema_dict = self._schema._json_schema
+
         if schema_dict is not None:
             # Schema provided - use Tool Use API to enforce structure
             # This is the AWS-recommended approach for reliable structured output
