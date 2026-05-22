@@ -326,9 +326,15 @@ class BedrockLanguageModel(lx.core.base_model.BaseLanguageModel):
             # langextract expects: {"extractions": [{"X": "Y", "X_attributes": {...}}]}
             tool_input = tool_use_part.get("input") or {}
             extractions = tool_input.get("extractions", [])
+            if not isinstance(extractions, list):
+                raise ValueError(f"Tool Use response has invalid 'extractions' type: {type(extractions).__name__}")
             transformed = []
             for ext in extractions:
-                cls_name = ext.get("extraction_class", "")
+                if not isinstance(ext, dict):
+                    raise ValueError(f"Tool Use extraction item is not a dict: {type(ext).__name__}")
+                cls_name = ext.get("extraction_class")
+                if not cls_name:
+                    continue  # Skip extractions without a class name
                 item = {cls_name: ext.get("extraction_text", "")}
                 attrs = ext.get("attributes")
                 if attrs is not None:
